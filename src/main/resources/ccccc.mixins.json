@@ -6,7 +6,8 @@
       "AbstractComputerBlockEntityMixin",
       "ContraptionMixin",
       "ServerComputerRegistryMixin",
-      "ServerComputerMixin"
+      "ServerComputerMixin",
+      "SpeakerPeripheralMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
