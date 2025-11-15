@@ -1,6 +1,5 @@
 package com.ccccc.mixin;
 
-import com.ccccc.CCCCC;
 import com.ccccc.accessors.ServerComputerMixinAccessor;
 import dan200.computercraft.shared.computer.core.ServerComputer;
 import org.spongepowered.asm.mixin.Mixin;

@@ -3,11 +3,7 @@
 	"package": "com.ccccc.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
-      "AbstractComputerBlockEntityMixin",
-      "ContraptionMixin",
-      "ServerComputerRegistryMixin",
-      "ServerComputerMixin",
-      "SpeakerPeripheralMixin"
+      "ServerComputerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

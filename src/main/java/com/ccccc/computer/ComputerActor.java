@@ -1,23 +1,31 @@
 package com.ccccc.computer;
 
-import com.ccccc.CCCCC;
 import com.ccccc.accessors.ServerComputerMixinAccessor;
 import com.ccccc.peripherals.PeripheralActorInterface;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import dan200.computercraft.api.ComputerCraftAPI;
+import dan200.computercraft.api.peripheral.IPeripheral;
 import dan200.computercraft.core.computer.ComputerSide;
 import dan200.computercraft.shared.computer.core.ComputerFamily;
 import dan200.computercraft.shared.computer.core.ServerComputer;
 import dan200.computercraft.shared.computer.core.ServerContext;
 import dan200.computercraft.shared.config.ConfigSpec;
+import dan200.computercraft.shared.peripheral.modem.ModemState;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemElement;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemLocalPeripheral;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemPeripheral;
 import dan200.computercraft.shared.util.IDAssigner;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 class ComputerActor {
@@ -130,10 +138,75 @@ class ComputerActor {
     }
 
     void addPeripherals(MovementContext ctx) {
+
+        var modem = new FakeModem(ctx.world);
+
+        serverComputer.setPeripheral(ComputerSide.BOTTOM,modem);
+
+        Map<String,Integer> names = new HashMap<>();
+
         for (var actor : ctx.contraption.getActors()) {
             if (actor.getRight().temporaryData instanceof PeripheralActorInterface peripheral) {
-                serverComputer.setPeripheral(ComputerSide.BACK,peripheral.getPeripheral());
+//                serverComputer.setPeripheral(ComputerSide.BACK,peripheral.getPeripheral());
+                var typeName = peripheral.getPeripheral().getType();
+                String name = typeName + "_";
+                if(names.containsKey(typeName)){
+                    int id = names.get(typeName);
+                    names.put(typeName,id+1);
+                    name += String.valueOf(id);
+                }else{
+                    names.put(typeName,1);
+                    name += "0";
+                }
+
+                modem.attachPeripheral(name,peripheral.getPeripheral());
             }
         }
     }
+
+    private static final class FakeModem extends WiredModemPeripheral{
+
+        FakeModem(Level level){
+            super(new ModemState(),new FakeModemElement(level),new WiredModemLocalPeripheral(null),null);
+
+        }
+
+        @Override
+        public Vec3 getPosition() {
+            return null;
+        }
+    }
+
+    private static final class FakeModemElement extends WiredModemElement{
+
+        private Level level;
+
+        FakeModemElement(Level level){
+            this.level = level;
+        }
+
+        @Override
+        protected void attachPeripheral(String name, IPeripheral peripheral) {}
+
+        @Override
+        protected void detachPeripheral(String name) {}
+
+        @Override
+        public Level getLevel() {
+            return level;
+        }
+
+        @Override
+        public Vec3 getPosition() {
+            return null;
+        }
+    }
+
+//    private static final class ComponentAccessModem implements ComponentAccess {
+//
+//        @Override
+//        public @Nullable Object get(Direction direction) {
+//            return null;
+//        }
+//    }
 }
