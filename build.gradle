@@ -1,7 +1,10 @@
 plugins {
 	id 'fabric-loom' version "${loom_version}"
 	id 'maven-publish'
+    id "com.modrinth.minotaur" version "2.+"
 }
+
+apply from: 'secrets.gradle'
 
 version = project.mod_version
 group = project.maven_group
@@ -27,6 +30,28 @@ repositories {
             includeGroup("cc.tweaked")
         }
     }
+
+    maven {
+        url = "https://api.modrinth.com/maven"
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
+}
+
+modrinth {
+    token = modrinth_token
+//    token = System.getenv("MODRINTH_TOKEN") // Please use an environment variable for this! The default is `$MODRINTH_TOKEN`.
+    projectId = "B1tdnJ0n" // The ID of your Modrinth project. Slugs will not work.
+    versionNumber = "1.0.0" // The (preferably SemVer) version of the mod. If not specified, it'll use the `version` declaration
+    versionType =  "alpha"
+    uploadFile = jar // Tells Minotaur to use the remapped jar
+    gameVersions = ['1.20.1'] // An array of game versions the version supports
+    dependencies {
+        required.project "create-fabric"
+        required.project "cc-tweaked"
+    }
+    syncBodyFrom = rootProject.file("README.md").text
 }
 
 loom {
