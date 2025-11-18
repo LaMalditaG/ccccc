@@ -3,7 +3,9 @@
 	"package": "com.ccccc.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
-      "ServerComputerMixin"
+      "ServerComputerMixin",
+      "DiskDriveBlockEntityMixin",
+      "InventoryMethodsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
