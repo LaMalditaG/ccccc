@@ -1,0 +1,236 @@
+package com.ccccc.computer;
+
+import com.ccccc.CCCCC;
+import com.ccccc.accessors.ServerComputerMixinAccessor;
+import com.ccccc.peripherals.PeripheralActorInterface;
+import com.simibubi.create.content.contraptions.behaviour.MovementContext;
+import dan200.computercraft.api.ComputerCraftAPI;
+import dan200.computercraft.api.peripheral.IPeripheral;
+import dan200.computercraft.core.computer.ComputerSide;
+import dan200.computercraft.shared.computer.core.ComputerFamily;
+import dan200.computercraft.shared.computer.core.ServerComputer;
+import dan200.computercraft.shared.computer.core.ServerContext;
+import dan200.computercraft.shared.config.ConfigSpec;
+import dan200.computercraft.shared.peripheral.modem.ModemState;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemElement;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemLocalPeripheral;
+import dan200.computercraft.shared.peripheral.modem.wired.WiredModemPeripheral;
+import dan200.computercraft.shared.util.IDAssigner;
+import net.minecraft.core.BlockPos;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class ComputerActor {
+
+    private ServerComputer serverComputer;
+    private UUID instanceID;
+    private int computerID;
+    private final ServerLevel level;
+    private final ComputerFamily family;
+    private boolean wasOn = false;
+    private boolean hasToChangeState = true;
+
+    public ComputerActor(int computerID, ComputerFamily family, ServerLevel level) {
+        this.computerID = computerID;
+        this.level = level;
+        this.family = family;
+    }
+
+    @Contract("null -> fail")
+    public final @NotNull ServerComputer createServerComputer(MinecraftServer server) {
+        if (server == null) throw new IllegalStateException("Cannot access server computer on the client.");
+
+        var computer = ServerContext.get(server).registry().get(instanceID);
+        if (computer == null) {
+            if (computerID < 0) // If there is no ID, we generate a new computer
+                computerID = ComputerCraftAPI.createUniqueNumberedSaveDir(server, IDAssigner.COMPUTER);
+            computer = createComputer(computerID);
+            instanceID = computer.register();
+        }
+
+        serverComputer = computer;
+
+        return computer;
+    }
+
+    protected ServerComputer createComputer(int id) {
+        return new ServerComputer(level, new BlockPos(0, 0, 0), ServerComputer.properties(id, family)
+                .terminalSize(ConfigSpec.computerTermWidth.get(), ConfigSpec.computerTermHeight.get())
+        );
+    }
+
+    public void tick() {
+        if (serverComputer instanceof ServerComputerMixinAccessor accessor) {
+            accessor.cCCCC$tickActor();
+            hasToChangeState = wasOn != serverComputer.isOn();
+            wasOn = serverComputer.isOn();
+        }
+    }
+
+    public void turnOn() {
+        CCCCC.LOGGER.info("TURN ON");
+        serverComputer.turnOn();
+    }
+
+    public void shutdown() {
+        serverComputer.shutdown();
+    }
+
+    public boolean isOn() {
+        return serverComputer.isOn();
+    }
+
+    public boolean hasToChangeState() {
+        return hasToChangeState;
+    }
+
+    public void cleanChangeState(){
+        hasToChangeState = false;
+    }
+
+    public ServerComputer getServerComputer(){
+        return serverComputer;
+    }
+
+    static @Nullable ComputerActor createActor(@NotNull MovementContext ctx) {
+        if (ctx.world instanceof ServerLevel serverLevel) {
+            CCCCC.LOGGER.info("Creating actor");
+            int computerID = -1;
+            if (ctx.blockEntityData.contains("ComputerId")) // If there is no ID, we will generate a new computer later on
+                computerID = ctx.blockEntityData.getInt("ComputerId");
+
+            String label = null;
+            if (ctx.blockEntityData.contains("label"))
+                label = ctx.blockEntityData.getString("label");
+
+            ComputerActor computerActor;
+            ServerComputer serverComputer;
+            if (ctx.temporaryData instanceof ComputerActor ca) { // If there is a computer actor, use it
+                computerActor = ca;
+                serverComputer = computerActor.serverComputer;
+            } else { // Create a new computer actor
+                if (!ctx.blockEntityData.contains("id")){
+                    CCCCC.LOGGER.info("This is not a Computer");
+                    return null;
+                }
+
+                var blockId = ctx.blockEntityData.getString("id");
+                if (blockId.equals("computercraft:computer_advanced"))
+                    computerActor = new ComputerActor(computerID, ComputerFamily.ADVANCED, serverLevel);
+                else if (blockId.equals("computercraft:computer_command"))
+                    computerActor = new ComputerActor(computerID, ComputerFamily.COMMAND, serverLevel);
+                else
+                    computerActor = new ComputerActor(computerID, ComputerFamily.NORMAL, serverLevel);
+
+
+                ctx.temporaryData = computerActor;
+                serverComputer = computerActor.createServerComputer(serverLevel.getServer()); // Create or assign server computer
+                if (label != null)
+                    serverComputer.setLabel(label);
+            }
+
+            if (ctx.blockEntityData.contains("On")) {
+                if (ctx.blockEntityData.getBoolean("On"))
+                    serverComputer.turnOn();
+            }
+
+            return computerActor;
+        }
+        CCCCC.LOGGER.info("Running on the client");
+        return null;
+    }
+
+    void addPeripherals(MovementContext ctx) {
+        CCCCC.LOGGER.info("Adding peripherals");
+
+        FakeModem modem;
+        var p = serverComputer.getPeripheral(ComputerSide.BOTTOM);
+        if(p instanceof FakeModem m){
+            modem = m;
+        }else{
+            modem = new FakeModem(ctx.world);
+            serverComputer.setPeripheral(ComputerSide.BOTTOM,modem);
+        }
+
+        Map<String,Integer> names = new HashMap<>();
+
+        for (var actor : ctx.contraption.getActors()) {
+            CCCCC.LOGGER.info(actor.toString());
+            if (actor.getRight().temporaryData instanceof PeripheralActorInterface peripheral) {
+                var typeName = peripheral.getPeripheral().getType();
+                String name = typeName + "_";
+                if(names.containsKey(typeName)){
+                    int id = names.get(typeName);
+                    names.put(typeName,id+1);
+                    name += String.valueOf(id);
+                }else{
+                    names.put(typeName,1);
+                    name += "0";
+                }
+
+                modem.attachPeripheral(name,peripheral.getPeripheral());
+            }
+        }
+    }
+
+    public static final class FakeModem extends WiredModemPeripheral{
+        FakeModem(Level level){
+            super(new ModemState(),new FakeModemElement(level),new WiredModemLocalPeripheral(null),null);
+        }
+
+        @Override
+        public Vec3 getPosition() {
+            return null;
+        }
+
+        @Override
+        public @NonNull String getType(){
+            return "contraption";
+        }
+    }
+
+    private static final class FakeModemElement extends WiredModemElement{
+
+        private final Level level;
+
+        FakeModemElement(Level level){
+            this.level = level;
+        }
+
+        @Override
+        protected void attachPeripheral(@NonNull String name, @NonNull IPeripheral peripheral) {}
+
+        @Override
+        protected void detachPeripheral(@NonNull String name) {}
+
+        @Override
+        public Level getLevel() {
+            return level;
+        }
+
+        @Override
+        public Vec3 getPosition() {
+            return null;
+        }
+
+
+    }
+
+//    private static final class ComponentAccessModem implements ComponentAccess {
+//
+//        @Override
+//        public @Nullable Object get(Direction direction) {
+//            return null;
+//        }
+//    }
+}
