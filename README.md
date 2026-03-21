@@ -14,8 +14,8 @@ These peripherals will be accessed by a fake peripheral hub inside the computer.
 
 ## TODO
 - Other CC-Tweaked peripherals
-  - Printer
-  - Display (we'll see...)
+    - Printer
+    - Display (we'll see...)
 - Chests and other containers
 - Turtles
 - Update block textures when the blockstate changes
