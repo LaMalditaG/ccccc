@@ -168,7 +168,10 @@ public class ComputerActor {
         for (var actor : ctx.contraption.getActors()) {
             CCCCC.LOGGER.info(actor.toString());
             if (actor.getRight().temporaryData instanceof PeripheralActorInterface peripheral) {
-                var typeName = peripheral.getPeripheral().getType();
+                var resolved = peripheral.getPeripheral();
+                if (resolved == null) continue; // e.g. a non-owner block of a merged multiblock monitor
+
+                var typeName = resolved.getType();
                 String name = typeName + "_";
                 if(names.containsKey(typeName)){
                     int id = names.get(typeName);
@@ -179,7 +182,7 @@ public class ComputerActor {
                     name += "0";
                 }
 
-                modem.attachPeripheral(name,peripheral.getPeripheral());
+                modem.attachPeripheral(name,resolved);
             }
         }
     }
