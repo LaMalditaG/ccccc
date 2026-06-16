@@ -3,6 +3,7 @@ package com.ccccc.computer;
 import com.ccccc.CCCCC;
 import com.ccccc.accessors.ServerComputerMixinAccessor;
 import com.ccccc.peripherals.PeripheralActorInterface;
+import com.ccccc.peripherals.monitor.MonitorActor;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import dan200.computercraft.api.ComputerCraftAPI;
 import dan200.computercraft.api.peripheral.IPeripheral;
@@ -28,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jspecify.annotations.NonNull;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 
@@ -152,8 +154,6 @@ public class ComputerActor {
     }
 
     void addPeripherals(MovementContext ctx) {
-        CCCCC.LOGGER.info("Adding peripherals");
-
         FakeModem modem;
         var p = serverComputer.getPeripheral(ComputerSide.BOTTOM);
         if(p instanceof FakeModem m){
@@ -164,10 +164,15 @@ public class ComputerActor {
         }
 
         Map<String,Integer> names = new HashMap<>();
+        Map<String, IPeripheral> peripherals = new HashMap<>();
 
         for (var actor : ctx.contraption.getActors()) {
-            CCCCC.LOGGER.info(actor.toString());
-            if (actor.getRight().temporaryData instanceof PeripheralActorInterface peripheral) {
+            var actorContext = actor.getRight();
+            if (!(actorContext.temporaryData instanceof PeripheralActorInterface) && actorContext.world instanceof ServerLevel) {
+                MonitorActor.createActor(actorContext);
+            }
+
+            if (actorContext.temporaryData instanceof PeripheralActorInterface peripheral) {
                 var resolved = peripheral.getPeripheral();
                 if (resolved == null) continue; // e.g. a non-owner block of a merged multiblock monitor
 
@@ -182,14 +187,44 @@ public class ComputerActor {
                     name += "0";
                 }
 
-                modem.attachPeripheral(name,resolved);
+                peripherals.put(name, resolved);
             }
         }
+
+        modem.syncPeripherals(peripherals);
     }
 
     public static final class FakeModem extends WiredModemPeripheral{
+        private final FakeModemElement element;
+
         FakeModem(Level level){
-            super(new ModemState(), new FakeModemElement(level), new WiredModemLocalPeripheral(direction -> null), null);
+            this(new FakeModemElement(level));
+        }
+
+        private FakeModem(FakeModemElement element) {
+            super(new ModemState(), element, new WiredModemLocalPeripheral(direction -> null), null);
+            this.element = element;
+        }
+
+        void syncPeripherals(Map<String, IPeripheral> peripherals) {
+            var remotePeripherals = element.getRemotePeripherals();
+            synchronized (remotePeripherals) {
+                for (var name : new HashSet<>(remotePeripherals.keySet())) {
+                    var oldPeripheral = remotePeripherals.get(name);
+                    var newPeripheral = peripherals.get(name);
+                    if (newPeripheral == null || oldPeripheral != newPeripheral) {
+                        detachPeripheral(name);
+                        remotePeripherals.remove(name);
+                    }
+                }
+
+                for (var entry : peripherals.entrySet()) {
+                    if (remotePeripherals.get(entry.getKey()) == entry.getValue()) continue;
+
+                    remotePeripherals.put(entry.getKey(), entry.getValue());
+                    attachPeripheral(entry.getKey(), entry.getValue());
+                }
+            }
         }
 
         @Override

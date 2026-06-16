@@ -18,10 +18,10 @@ public class ComputerMovementBehaviour implements MovementBehaviour {
                 CCCCC.LOGGER.info("Change state NOW!");
                 boolean isOn = actor.isOn();
                 context.blockEntityData.putBoolean("On",isOn);
-                actor.addPeripherals(context);
                 actor.cleanChangeState();
             }
 
+            actor.addPeripherals(context);
             actor.tick(); // Ticks after the peripherals were added so startup.lua can access them (actually, this does not work)
             syncRenderedState(context, actor.getServerComputer().getState());
         }else{

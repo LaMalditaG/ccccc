@@ -22,7 +22,7 @@ public class MonitorActor implements PeripheralActorInterface {
         this.group = group;
     }
 
-    static @Nullable MonitorActor createActor(@NotNull MovementContext ctx) {
+    public static @Nullable MonitorActor createActor(@NotNull MovementContext ctx) {
         if (!(ctx.world instanceof ServerLevel)) return null;
         if (!MonitorGeometry.isMonitorBlock(ctx.state.getBlock())) return null;
 
