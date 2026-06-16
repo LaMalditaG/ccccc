@@ -4,6 +4,7 @@ import com.ccccc.computer.ComputerMovementBehaviour;
 import com.ccccc.computer.ComputerMovingInteraction;
 import com.ccccc.peripherals.drive.DriveMovementBehaviour;
 import com.ccccc.peripherals.drive.DriveMovingInteraction;
+import com.ccccc.peripherals.monitor.MonitorMovementBehaviour;
 import com.ccccc.peripherals.speaker.SpeakerMovementBehaviour;
 import com.ccccc.peripherals.wirelessmodem.WirelessModemBehaviour;
 import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
@@ -23,6 +24,8 @@ public class ModInteractionBehaviours {
         registerBlockMovementBehaviour(ModRegistry.Blocks.WIRELESS_MODEM_ADVANCED.id(),new WirelessModemBehaviour());
         registerBlockMovementBehaviour(ModRegistry.Blocks.WIRELESS_MODEM_NORMAL.id(),new WirelessModemBehaviour());
         registerBlockMovementBehaviour(ModRegistry.Blocks.DISK_DRIVE.id(),new DriveMovementBehaviour());
+        registerBlockMovementBehaviour(ModRegistry.Blocks.MONITOR_NORMAL.id(),new MonitorMovementBehaviour());
+        registerBlockMovementBehaviour(ModRegistry.Blocks.MONITOR_ADVANCED.id(),new MonitorMovementBehaviour());
 
         registerBlockMovingInteraction(ModRegistry.Blocks.DISK_DRIVE.id(), new DriveMovingInteraction());
 

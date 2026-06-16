@@ -2,7 +2,6 @@ package com.ccccc.peripherals.drive;
 
 import com.ccccc.CCCCC;
 import com.ccccc.peripherals.PeripheralActorInterface;
-import com.google.errorprone.annotations.concurrent.GuardedBy;
 import com.simibubi.create.api.contraption.storage.item.MountedItemStorage;
 import com.simibubi.create.content.contraptions.behaviour.MovementContext;
 import dan200.computercraft.api.filesystem.Mount;
@@ -12,9 +11,7 @@ import dan200.computercraft.api.lua.LuaFunction;
 import dan200.computercraft.api.peripheral.IComputerAccess;
 import dan200.computercraft.api.peripheral.IPeripheral;
 import dan200.computercraft.core.util.StringUtil;
-import dan200.computercraft.shared.media.items.DiskItem;
-import dan200.computercraft.shared.network.client.PlayRecordClientMessage;
-import dan200.computercraft.shared.peripheral.diskdrive.DiskDriveBlockEntity;
+import dan200.computercraft.shared.ModRegistry;
 import dan200.computercraft.shared.peripheral.diskdrive.DiskDriveMenu;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -67,14 +64,14 @@ public class DriveActor implements PeripheralActorInterface {
     public void tick(){}
 
     /**
-     * A modified version of CC-Tweaked's{@link dan200.computercraft.shared.peripheral.diskdrive.DiskDrivePeripheral} adapted to use a different storage
-     * The rest is copied
+     * A modified version of CC-Tweaked's DiskDrivePeripheral adapted to use a different storage.
+     * The rest is copied.
      */
     static class Peripheral implements MenuProvider, IPeripheral {
         FakeContainer diskDrive;
 
-        Peripheral(MountedItemStorage storage,ServerLevel level){
-            diskDrive = new FakeContainer(storage,level);
+        Peripheral(MountedItemStorage storage, ServerLevel level){
+            diskDrive = new FakeContainer(storage, level);
             diskDrive.setChanged();
         }
 
@@ -91,7 +88,7 @@ public class DriveActor implements PeripheralActorInterface {
         @Override
         public @NotNull Component getDisplayName() {
             var s = Component.translatable("block.computercraft.disk_drive").getString();
-            return Component.translatable("create.contraptions.moving_container",s);
+            return Component.translatable("create.contraptions.moving_container", s);
         }
 
         @Override
@@ -101,13 +98,13 @@ public class DriveActor implements PeripheralActorInterface {
 
         @LuaFunction
         public final boolean isDiskPresent() {
-            return diskDrive.getMedia().stack().isEmpty();
+            return !diskDrive.getMedia().stack().isEmpty();
         }
 
         @LuaFunction
         public final @Nullable Object @Nullable [] getDiskLabel() {
             var media = diskDrive.getMedia();
-            return media.media() == null ? null : new Object[]{ media.media().getLabel(media.stack()) };
+            return media.media() == null ? null : new Object[]{ media.media().getLabel(diskDrive.level.registryAccess(), media.stack()) };
         }
 
         @LuaFunction(mainThread = true)
@@ -132,14 +129,17 @@ public class DriveActor implements PeripheralActorInterface {
 
         @LuaFunction
         public final boolean hasAudio() {
-            return diskDrive.getMedia().getAudio() != null;
+            return diskDrive.getMedia().getAudio(diskDrive.level.registryAccess()) != null;
         }
 
         @LuaFunction
         @Nullable
         public final Object getAudioTitle() {
-            var stack = diskDrive.getMedia();
-            return stack.media() != null ? stack.getAudioTitle() : false;
+            var media = diskDrive.getMedia();
+            if (media.media() == null) return false;
+
+            var audio = media.getAudio(diskDrive.level.registryAccess());
+            return audio == null ? null : audio.value().description().getString();
         }
 
         @LuaFunction
@@ -159,8 +159,8 @@ public class DriveActor implements PeripheralActorInterface {
 
         @LuaFunction
         public final @Nullable Object @Nullable [] getDiskID() {
-            var disk = diskDrive.getMedia().stack();
-            return disk.getItem() instanceof DiskItem ? new Object[]{ DiskItem.getDiskID(disk) } : null;
+            var id = diskDrive.getMedia().stack().get(ModRegistry.DataComponents.DISK_ID.get());
+            return id != null ? new Object[]{ id.id() } : null;
         }
 
 
@@ -177,9 +177,7 @@ public class DriveActor implements PeripheralActorInterface {
         //------
 
         /**
-         * A class with the same custom methods that CC-Tweaked's{@link DiskDriveBlockEntity}class has, but without being a BlockEntity
-         * The rest is copied
-         * I still need to discover what some of these methods actually do
+         * A class with the same custom methods that CC-Tweaked's DiskDriveBlockEntity has, but without being a BlockEntity.
          */
         static class FakeContainer implements Container {
             MountedItemStorage storage;
@@ -190,22 +188,17 @@ public class DriveActor implements PeripheralActorInterface {
                 String mountPath;
             }
 
-            @GuardedBy("this")
             private final Map<IComputerAccess, MountInfo> computers = new HashMap<>();
-            @GuardedBy("this")
             private MediaStack media = MediaStack.EMPTY;
-            @GuardedBy("this")
             private @Nullable Mount mount;
 
             private boolean recordPlaying = false;
-            // In order to avoid main-thread calls in the peripheral, we set flags to mark which operation should be performed,
-            // then read them when ticking.
             private final AtomicReference<RecordCommand> recordQueued = new AtomicReference<>(null);
             private final AtomicBoolean ejectQueued = new AtomicBoolean(false);
 
             private final AtomicBoolean stackDirty = new AtomicBoolean(false);
 
-            FakeContainer(MountedItemStorage storage,ServerLevel level){
+            FakeContainer(MountedItemStorage storage, ServerLevel level){
                 this.level = level;
                 this.storage = storage;
             }
@@ -233,18 +226,17 @@ public class DriveActor implements PeripheralActorInterface {
 
             @Override
             public @NotNull ItemStack removeItemNoUpdate(int i) {
-                return removeItem(i,getMaxStackSize());
+                return removeItem(i, getMaxStackSize());
             }
 
             @Override
             public void setItem(int i, @NotNull ItemStack itemStack) {
-                storage.setStackInSlot(i,itemStack);
+                storage.setStackInSlot(i, itemStack);
             }
 
             @Override
             public void setChanged() {
                 if(!level.isClientSide) updateMedia();
-//                blockEntity.setChanged();
             }
 
             @Override
@@ -259,15 +251,9 @@ public class DriveActor implements PeripheralActorInterface {
 
             private synchronized void updateMedia() {
                 var newStack = getDiskStack();
-                if (ItemStack.isSameItemSameTags(newStack, media.stack())) return;
+                if (ItemStack.isSameItemSameComponents(newStack, media.stack())) return;
 
                 var newMedia = MediaStack.of(newStack);
-
-//                if (newStack.isEmpty()) {
-//                    updateBlockState(DiskDriveState.EMPTY);
-//                } else {
-//                    updateBlockState(newMedia.media() != null ? DiskDriveState.FULL : DiskDriveState.INVALID);
-//                }
 
                 // Unmount old disk
                 if (!media.stack().isEmpty()) {
@@ -307,13 +293,11 @@ public class DriveActor implements PeripheralActorInterface {
             }
 
             private synchronized void updateDiskFromMedia() {
-                // Write back the item to the main inventory, and then mark it as dirty.
                 setItem(0, media.stack().copy());
             }
 
-            @GuardedBy("this")
             private void updateMediaStack(ItemStack stack, boolean immediate) {
-                if (ItemStack.isSameItemSameTags(media.stack(), stack)) return;
+                if (ItemStack.isSameItemSameComponents(media.stack(), stack)) return;
                 media = new MediaStack(stack, media.media());
 
                 if (immediate) {
@@ -336,8 +320,7 @@ public class DriveActor implements PeripheralActorInterface {
                     var info = new MountInfo();
                     computers.put(computer, info);
                     if (!media.stack().isEmpty()) {
-//                        mountDisk(computer, info, getOrCreateMount(level instanceof ServerLevel l && l.getServer().isSameThread()));
-                        mountDisk(computer,info,getOrCreateMount(true));
+                        mountDisk(computer, info, getOrCreateMount(true));
                     }
                 }
             }
@@ -363,7 +346,6 @@ public class DriveActor implements PeripheralActorInterface {
             synchronized MountResult setDiskLabel(@Nullable String label) {
                 if (media.media() == null) return MountResult.NO_MEDIA;
 
-                // Set the label, and write it back to the media stack.
                 var stack = media.stack().copy();
                 if (!media.media().setLabel(stack, label)) return MountResult.NOT_ALLOWED;
                 updateMediaStack(stack, true);
@@ -371,12 +353,10 @@ public class DriveActor implements PeripheralActorInterface {
                 return MountResult.CHANGED;
             }
 
-            @GuardedBy("this")
             private @Nullable Mount getOrCreateMount(boolean immediate) {
                 if (media.media() == null) return null;
                 if (mount != null) return mount;
 
-                // Set the id (if needed) and write it back to the media stack.
                 var stack = media.stack().copy();
                 mount = media.media().createDataMount(stack, level);
                 updateMediaStack(stack, immediate);
@@ -386,14 +366,12 @@ public class DriveActor implements PeripheralActorInterface {
 
             private static void mountDisk(IComputerAccess computer, MountInfo info, @Nullable Mount mount) {
                 if (mount instanceof WritableMount writable) {
-                    // Try mounting at the lowest numbered "disk" name we can
                     var n = 1;
                     while (info.mountPath == null) {
                         info.mountPath = computer.mountWritable(n == 1 ? "disk" : "disk" + n, writable);
                         n++;
                     }
                 } else if (mount != null) {
-                    // Try mounting at the lowest numbered "disk" name we can
                     var n = 1;
                     while (info.mountPath == null) {
                         info.mountPath = computer.mount(n == 1 ? "disk" : "disk" + n, mount);
@@ -416,24 +394,12 @@ public class DriveActor implements PeripheralActorInterface {
             }
 
             private void ejectContents() {
-//                if (getLevel().isClientSide) return;
-//
-//                var stack = getDiskStack();
-//                if (stack.isEmpty()) return;
-//                setDiskStack(ItemStack.EMPTY);
-//
-//                WorldUtil.dropItemStack(getLevel(), getBlockPos(), getDirection(), stack);
-//                getLevel().levelEvent(LevelEvent.SOUND_DISPENSER_DISPENSE, getBlockPos(), 0);
+                // Not implemented for contraption drives
             }
 
             private void stopRecord() {
-//                sendMessage(new PlayRecordClientMessage(getBlockPos()));
+                // Not implemented for contraption drives
             }
-
-            private void sendMessage(PlayRecordClientMessage message) {
-//                ServerNetworking.sendToAllAround(message, (ServerLevel) getLevel(), Vec3.atCenterOf(getBlockPos()), 64);
-            }
-
 
             private enum RecordCommand {
                 PLAY,
@@ -449,4 +415,3 @@ public class DriveActor implements PeripheralActorInterface {
 
     }
 }
-

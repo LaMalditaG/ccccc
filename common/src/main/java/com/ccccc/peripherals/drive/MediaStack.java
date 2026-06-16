@@ -2,14 +2,16 @@ package com.ccccc.peripherals.drive;
 
 import dan200.computercraft.api.media.IMedia;
 import dan200.computercraft.shared.platform.PlatformHelper;
-import net.minecraft.sounds.SoundEvent;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.JukeboxSong;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A copy of CC-Tweaked's{@link dan200.computercraft.shared.peripheral.diskdrive.MediaStack}class has
+ * A copy of CC-Tweaked's MediaStack class.
  * Can't be accessed from here.
- * <p>
+ *
  * An immutable snapshot of the current disk. This allows us to read the stack in a thread-safe manner.
  *
  * @param stack An immutable {@link ItemStack}.
@@ -27,12 +29,7 @@ record MediaStack(ItemStack stack, @Nullable IMedia media) {
     }
 
     @Nullable
-    SoundEvent getAudio() {
-        return media != null ? media.getAudio(stack) : null;
-    }
-
-    @Nullable
-    String getAudioTitle() {
-        return media != null ? media.getAudioTitle(stack) : null;
+    Holder<JukeboxSong> getAudio(HolderLookup.Provider registries) {
+        return media != null ? media.getAudio(registries, stack) : null;
     }
 }

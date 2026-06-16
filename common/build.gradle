@@ -1,20 +1,27 @@
 architectury {
-    common rootProject.enabled_platforms.split(',')
+    common(rootProject.enabled_platforms.split(','))
+}
+
+configurations {
+    neoForgeClasspath {
+        canBeResolved = true
+        canBeConsumed = false
+    }
+    compileClasspath.extendsFrom neoForgeClasspath
 }
 
 dependencies {
-    // We depend on Fabric Loader here to use the Fabric @Environment annotations,
-    // which get remapped to the correct annotations on each platform.
-    // Do NOT use other classes from Fabric Loader.
+    // Fabric loader is still needed for Architectury annotation processing
     modImplementation "net.fabricmc:fabric-loader:$rootProject.fabric_loader_version"
 
-    // Architectury API. This is optional, and you can comment it out if you don't need it.
     modImplementation "dev.architectury:architectury:$rootProject.architectury_api_version"
 
     modImplementation("cc.tweaked:cc-tweaked-${project.minecraft_version}-common:$cc_version")
-//    compileOnly("cc.tweaked:cc-tweaked-${project.minecraft_version}-common-api:$cc_version")
+    modCompileOnly("cc.tweaked:cc-tweaked-${project.minecraft_version}-common-api:$cc_version")
+    modCompileOnly("cc.tweaked:cc-tweaked-${project.minecraft_version}-core-api:$cc_version")
 
-    modImplementation "com.simibubi.create:create-fabric:${project.create_fabric_version}"
+    modCompileOnly("com.simibubi.create:create-${project.minecraft_version}:${project.create_neoforge_version}:slim") { transitive = false }
 
-    modImplementation("cc.tweaked:cc-tweaked-${project.minecraft_version}-fabric:${project.cc_version}")
+    // NeoForge classes needed for compilation (MountedItemStorage implements IItemHandlerModifiable, etc.)
+    neoForgeClasspath("net.neoforged:neoforge:${neoforge_version}") { transitive = false }
 }
