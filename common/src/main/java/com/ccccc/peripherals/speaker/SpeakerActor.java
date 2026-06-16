@@ -9,7 +9,6 @@ import dan200.computercraft.shared.peripheral.speaker.SpeakerPeripheral;
 import dan200.computercraft.shared.peripheral.speaker.SpeakerPosition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -17,10 +16,10 @@ import org.jetbrains.annotations.Nullable;
 
 public class SpeakerActor implements PeripheralActorInterface {
     private Peripheral peripheral;
-    private Level level;
+    private ServerLevel level;
     private Vec3 pos;
 
-    static SpeakerPeripheral createActor(@NotNull MovementContext ctx){
+    static SpeakerPeripheral createActor(@NotNull MovementContext ctx) {
         if (ctx.world instanceof ServerLevel serverLevel) {
             var actor = new SpeakerActor();
             ctx.temporaryData = actor;
@@ -33,7 +32,7 @@ public class SpeakerActor implements PeripheralActorInterface {
         return null;
     }
 
-    Level getLevel(){
+    ServerLevel getLevel(){
         return level;
     }
 
@@ -60,7 +59,11 @@ public class SpeakerActor implements PeripheralActorInterface {
 
         private Peripheral(SpeakerActor speaker) {
             this.speaker = speaker;
-            this.speaker.level = speaker.level;
+        }
+
+        @Override
+        protected ServerLevel getLevel() {
+            return speaker.level;
         }
 
         @Contract(" -> new")
@@ -79,7 +82,6 @@ public class SpeakerActor implements PeripheralActorInterface {
                 new SpeakerMoveClientMessage(getSource(), getPosition()),
                 speaker.level.getChunkAt(BlockPos.containing(speaker.pos))
             );
-
         }
     }
 }

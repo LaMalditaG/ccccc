@@ -10,6 +10,7 @@ import dan200.computercraft.core.computer.ComputerSide;
 import dan200.computercraft.shared.computer.core.ComputerFamily;
 import dan200.computercraft.shared.computer.core.ServerComputer;
 import dan200.computercraft.shared.computer.core.ServerContext;
+import dan200.computercraft.shared.computer.core.TerminalSize;
 import dan200.computercraft.shared.config.ConfigSpec;
 import dan200.computercraft.shared.peripheral.modem.ModemState;
 import dan200.computercraft.shared.peripheral.modem.wired.WiredModemElement;
@@ -65,7 +66,7 @@ public class ComputerActor {
 
     protected ServerComputer createComputer(int id) {
         return new ServerComputer(level, new BlockPos(0, 0, 0), ServerComputer.properties(id, family)
-                .terminalSize(ConfigSpec.computerTermWidth.get(), ConfigSpec.computerTermHeight.get())
+                .terminalSize(new TerminalSize(ConfigSpec.computerTermWidth.get(), ConfigSpec.computerTermHeight.get()))
         );
     }
 
@@ -185,7 +186,7 @@ public class ComputerActor {
 
     public static final class FakeModem extends WiredModemPeripheral{
         FakeModem(Level level){
-            super(new ModemState(),new FakeModemElement(level),new WiredModemLocalPeripheral(null),null);
+            super(new ModemState(), new FakeModemElement(level), new WiredModemLocalPeripheral(direction -> null), null);
         }
 
         @Override
