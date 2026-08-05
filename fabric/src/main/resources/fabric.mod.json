@@ -5,7 +5,7 @@
   "name": "CCCCC",
   "description": "This is an example description! Tell everyone what your mod is about!",
   "authors": [
-    "Me!"
+    "LaMalditaG"
   ],
   "contact": {
     "homepage": "https://fabricmc.net/",
@@ -17,16 +17,19 @@
   "entrypoints": {
     "main": [
       "com.ccccc.fabric.CCCCCFabric"
+    ],
+    "client": [
+      "com.ccccc.fabric.client.CCCCCFabricClient"
     ]
   },
   "mixins": [
     "ccccc.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.17.2",
-    "minecraft": "~1.20.1",
-    "java": ">=17",
-    "architectury": ">=9.2.14",
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "architectury": ">=13.0.8",
     "fabric-api": "*"
   },
   "suggests": {

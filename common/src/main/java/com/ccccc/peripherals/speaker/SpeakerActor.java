@@ -63,6 +63,11 @@ public class SpeakerActor implements PeripheralActorInterface {
             this.speaker.level = speaker.level;
         }
 
+        @Override
+        protected ServerLevel getLevel() {
+            return (ServerLevel) speaker.getLevel();
+        }
+
         @Contract(" -> new")
         @Override
         public @NotNull SpeakerPosition getPosition() {

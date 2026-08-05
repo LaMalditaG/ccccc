@@ -1,6 +1,5 @@
-package com.ccccc.forge;
+package com.ccccc.neoforge;
 
-import com.ccccc.CCCCC;
 import com.simibubi.create.api.behaviour.interaction.MovingInteractionBehaviour;
 import com.simibubi.create.api.behaviour.movement.MovementBehaviour;
 

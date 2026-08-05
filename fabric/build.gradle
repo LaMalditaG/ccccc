@@ -65,10 +65,7 @@ modrinth {
     versionNumber = "${project.mod_version}" // The (preferably SemVer) version of the mod. If not specified, it'll use the `version` declaration
     versionType =  "alpha"
     uploadFile = remapJar // Tells Minotaur to use the remapped jar
-    gameVersions = ['1.20.1'] // An array of game versions the version supports
-    dependencies {
-        required.project "ccccc_"
-    }
+    gameVersions = ['1.21.1'] // An array of game versions the version supports
     changelog = rootProject.file("CHANGELOG.md").text
     syncBodyFrom = rootProject.file("README.md").text
 }
